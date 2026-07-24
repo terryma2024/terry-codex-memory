@@ -24,3 +24,5 @@
 ## 维护
 
 按 [Codex Memory 周度整理 SOP](docs/sop/codex-memory-curation.md) 定期整理新的可迁移经验。周度任务只沉淀脱敏后的规则、工作流与自建 Skill，不备份会话原文。
+
+需要将维护工作交接给新 Codex 项目时，从 [当前任务 Context](docs/handoff/current-task-context.md) 开始。
