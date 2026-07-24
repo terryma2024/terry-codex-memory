@@ -11,4 +11,5 @@ sessions/
 cache/
 logs/
 exports/
-
+__pycache__/
+*.pyc

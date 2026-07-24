@@ -9,7 +9,7 @@
 1. 阅读根目录 README、`profile/working-principles.md` 与 `manifests/exclusions.md`。
 2. 将 `config/codex-config.template.toml` 中的非敏感偏好合并到目标环境；不要复制未知配置项。
 3. 运行 `scripts/audit.sh`。它只检查本仓库是否含明显敏感模式与目标环境的基础命令。
-4. 根据具体项目按需安装 `manifests/skills.md` 所列 Skill，并验证真实产物。
+4. 根据具体项目按需安装 `manifests/skills.md` 所列 Skill，并验证真实产物。`thinking-partner` 可直接安装；`vocab-print-cards` 要先验证 PDF 依赖；`xray-route` 要先验证本机网络维护命令。
 5. 阅读 `profile/task-playbooks.md`，把项目工作方式加载进当前任务上下文。
 6. 只有在新机器的 Xray 与本地维护命令已独立验证后，才安装 `skills/xray-route`。
 
@@ -23,4 +23,3 @@
 - 能按项目需求选择 Skill，不会无差别全局安装。
 - 能在研究、机器人、发布和远程维护任务中采用对应工作流。
 - 能识别仓库中的敏感信息边界，并要求在目标机器本地配置凭据。
-

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vocab Print Cards"
+  short_description: "Create printable vocabulary cards and answer keys"
+  default_prompt: "Use $vocab-print-cards to create a 4-up Chinese-to-English vocabulary worksheet and answer key PDF."

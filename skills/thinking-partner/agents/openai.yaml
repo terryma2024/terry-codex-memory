@@ -1,0 +1,4 @@
+interface:
+  display_name: "Thinking Partner"
+  short_description: "Socratic coaching for clear decisions and ideas"
+  default_prompt: "Use $thinking-partner to help me clarify this decision before proposing solutions."
