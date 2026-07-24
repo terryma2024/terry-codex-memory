@@ -1,0 +1,11 @@
+# 只复制经过确认的、非敏感的偏好。按你当前 Codex 版本的配置格式调整。
+# 禁止在此文件中加入 API Key、令牌、Cookie、代理账号密码或本机绝对路径。
+
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+service_tier = "default"
+sandbox_mode = "workspace-write"
+
+# 推荐：由新机器的系统设置或安全存储提供凭据。
+# OPENAI_API_KEY = "YOUR_SECRET_IN_LOCAL_KEYCHAIN_OR_ENV"
+

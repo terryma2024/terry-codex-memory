@@ -1,0 +1,5 @@
+interface:
+  display_name: "Xray Route"
+  short_description: "Manage local Xray DIRECT and PROXY domain rules"
+  default_prompt: "Use $xray-route to add example.com to the local Xray DIRECT list."
+
