@@ -6,7 +6,7 @@
 
 ## 仓库状态
 
-- 本地仓库：`/Users/matianyi/Projects/terry-codex-memory`
+- 本地仓库：当前仓库根目录。
 - 远端：GitHub 上同名仓库，`main` 已推送。
 - 核心入口：`README.md`、`docs/initialization.md`、`profile/`、`manifests/`、`skills/`。
 - 已纳入的自建 Skills：`thinking-partner`、`vocab-print-cards`、`xray-route`。
