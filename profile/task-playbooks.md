@@ -21,11 +21,14 @@
 
 ## 并行批处理与资格判定
 
-1. 由一个上游 coordinator 统一持有队列、动态租约、容量与完成计数、Worker/Broker 生命周期、结果提交、恢复、清理和最终资格；下游页面与事件只展示投影。
-2. 运行前验证模式、并发度、批容量、资源和运行 provenance，并把一次性 preflight receipt 绑定到本次 campaign/batch；并行前置条件不成立时 fail closed，不静默降级为顺序执行。
-3. 分开定义 point 终态与 attempt 终态，并显式限定哪些失败可重试；重试使用新的隔离批次、租约和证据，不覆盖第一次结果，也不把不确定状态改写成失败或成功。
-4. journal、manifest、artifact namespace、cleanup receipt 和资格 flags 由 coordinator 原子提交并可回放；Web snapshot、Worker 自报成功或旧 cursor 不能越权改变权威状态。
-5. 恢复时先核对 campaign、batch、receipt、cursor 和已提交结果，再重建未完成工作；只有资源、执行、证据和清理门全部通过时才能宣布资格成立。
+1. 由一个上游 coordinator 统一持有队列、动态租约、容量与完成计数、Worker/Broker 生命周期、结果提交、恢复、清理和批次资格；若系统还产生可复用准入画像，则由候选链之外的独立 authority 验证、接受和撤销，二者不能互相代写权威状态。
+2. 扩容使用新版本契约，冻结协议、运行配置和资源画像；分别记录 requested、allocated、started 与 ready 容量，只有它们精确等于请求值才开放正式队列，不能用限流参数隐藏降级。
+3. 运行前验证模式、并发度、最终容量、资源和运行 provenance，并把一次性 preflight receipt 绑定到本次 campaign/batch；按递增阶段在同一身份下准入，阶段 canary 使用独立命名空间，不进入正式覆盖率、成功率或资格分母。
+4. 分开定义 point 终态与 attempt 终态，并显式限定哪些失败可重试；重试使用新的隔离批次、租约和证据，不覆盖第一次结果，也不把不确定状态改写成失败或成功。
+5. slot 存活心跳与工作 lease 分离，epoch、generation、session 和 sequence 都参与 fencing；丢失 Worker 后先暂停新 lease，换代不重置已用配额或已裁决结果，恢复到请求的精确健康容量后才能继续。
+6. 指标样本绑定 Worker generation、运行身份和单调时间；计划内 reset/recovery 是有界状态迁移而不是缺样豁免，未受影响的主机、隔离组和设备指标仍须连续，超时、缺样或身份漂移阻断准入。
+7. journal、manifest、artifact namespace、cleanup receipt 和批次资格 flags 由 coordinator 原子提交并可回放；authority 只从封存证据重算画像，并在任何新准入前消费持久化的待撤销记录；Web snapshot、Worker 自报成功或旧 cursor 不能越权改变权威状态。
+8. 恢复时先核对 campaign、batch、receipt、cursor、代际和已提交结果，再重建未完成工作；只有资源、执行、证据、权威裁决和清理门全部通过时才能宣布资格成立。
 
 ## LLM/Agent 驱动高影响执行
 
