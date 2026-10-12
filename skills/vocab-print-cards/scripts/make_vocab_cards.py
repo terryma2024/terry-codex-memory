@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate A4 4-up vocabulary worksheet and answer-key PDFs."""
+"""Generate A4 vocabulary worksheet and answer-key PDFs."""
 
 from __future__ import annotations
 
@@ -32,6 +32,12 @@ class Item:
     en: str
 
 
+@dataclass(frozen=True)
+class Unit:
+    title: str
+    items: list[Item]
+
+
 def register_font() -> str:
     for path in FONT_PATHS:
         if path.exists():
@@ -61,6 +67,40 @@ def load_items(path: Path) -> list[Item]:
     return items
 
 
+def load_units(path: Path) -> list[Unit]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("units"), list):
+        raise ValueError("Unit layout input must be an object with a 'units' list.")
+
+    units: list[Unit] = []
+    for unit_index, row in enumerate(data["units"], start=1):
+        if not isinstance(row, dict) or "title" not in row or "items" not in row:
+            raise ValueError(f"Unit {unit_index} must contain 'title' and 'items' fields.")
+        title = str(row["title"]).strip()
+        if not title:
+            raise ValueError(f"Unit {unit_index} has an empty title.")
+        raw_items = row["items"]
+        if not isinstance(raw_items, list) or not raw_items:
+            raise ValueError(f"Unit {unit_index} must contain at least one item.")
+
+        items: list[Item] = []
+        for item_index, item in enumerate(raw_items, start=1):
+            if not isinstance(item, dict) or "zh" not in item or "en" not in item:
+                raise ValueError(
+                    f"Unit {unit_index} item {item_index} must contain 'zh' and 'en' fields."
+                )
+            zh = str(item["zh"]).strip()
+            en = str(item["en"]).strip()
+            if not zh or not en:
+                raise ValueError(f"Unit {unit_index} item {item_index} has an empty 'zh' or 'en' field.")
+            items.append(Item(zh=zh, en=en))
+        units.append(Unit(title=title, items=items))
+
+    if not units:
+        raise ValueError("Input contains no vocabulary units.")
+    return units
+
+
 def draw_dotted_line(c: canvas.Canvas, x1: float, y1: float, x2: float, y2: float) -> None:
     c.saveState()
     c.setStrokeColor(colors.HexColor("#B8B8B8"))
@@ -68,6 +108,10 @@ def draw_dotted_line(c: canvas.Canvas, x1: float, y1: float, x2: float, y2: floa
     c.setLineWidth(0.45)
     c.line(x1, y1, x2, y2)
     c.restoreState()
+
+
+def card_instruction(show_answers: bool) -> str:
+    return "参考答案。" if show_answers else "根据中文写出英文。"
 
 
 def draw_card(
@@ -79,6 +123,7 @@ def draw_card(
     font_name: str,
     items: list[Item],
     title: str,
+    show_answers: bool = False,
 ) -> None:
     pad_x = 8 * mm
     top = y + h - 7 * mm
@@ -95,7 +140,7 @@ def draw_card(
 
     c.setFont(font_name, 6.8)
     c.setFillColor(colors.HexColor("#555555"))
-    c.drawString(left, top - 5.6 * mm, "根据中文写出英文。")
+    c.drawString(left, top - 5.6 * mm, card_instruction(show_answers))
 
     available_h = h - 31 * mm
     row_h = min(8.65 * mm, max(5.3 * mm, available_h / max(len(items), 1)))
@@ -117,7 +162,10 @@ def draw_card(
         c.drawRightString(left + number_w - 1.5 * mm, baseline, f"{idx}.")
         c.setFont(font_name, text_size)
         c.drawString(left + number_w, baseline, item.zh)
-        c.line(blank_start, row_y + 0.9 * mm, blank_end, row_y + 0.9 * mm)
+        if show_answers:
+            c.drawString(blank_start, baseline, item.en)
+        else:
+            c.line(blank_start, row_y + 0.9 * mm, blank_end, row_y + 0.9 * mm)
 
     c.restoreState()
 
@@ -145,6 +193,42 @@ def make_worksheet(path: Path, items: list[Item], font_name: str, title: str) ->
         draw_card(c, *cell, font_name=font_name, items=items, title=title)
 
     c.showPage()
+    c.save()
+
+
+def make_unit_cards(path: Path, units: list[Unit], font_name: str, title: str) -> None:
+    page_w, page_h = A4
+    c = canvas.Canvas(str(path), pagesize=A4)
+    c.setTitle(title)
+    c.setAuthor("Codex")
+
+    margin = 8 * mm
+    gutter = 5 * mm
+    cell_w = (page_w - 2 * margin - gutter) / 2
+    cell_h = (page_h - 2 * margin - gutter) / 2
+    cells = [
+        (margin, margin + cell_h + gutter, cell_w, cell_h),
+        (margin + cell_w + gutter, margin + cell_h + gutter, cell_w, cell_h),
+        (margin, margin, cell_w, cell_h),
+        (margin + cell_w + gutter, margin, cell_w, cell_h),
+    ]
+
+    for unit in units:
+        draw_dotted_line(c, page_w / 2, margin, page_w / 2, page_h - margin)
+        draw_dotted_line(c, margin, page_h / 2, page_w - margin, page_h / 2)
+        question_title = f"{unit.title} · {title}"
+        for cell in cells[:3]:
+            draw_card(c, *cell, font_name=font_name, items=unit.items, title=question_title)
+        draw_card(
+            c,
+            *cells[3],
+            font_name=font_name,
+            items=unit.items,
+            title=f"{unit.title} · 答案",
+            show_answers=True,
+        )
+        c.showPage()
+
     c.save()
 
 
@@ -221,9 +305,15 @@ def submit_print(files: Iterable[Path], printer: str | None) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path, help="UTF-8 JSON file with zh/en vocabulary items.")
+    parser.add_argument("--input", required=True, type=Path, help="UTF-8 JSON file with zh/en items or grouped units.")
     parser.add_argument("--out-dir", required=True, type=Path, help="Directory for generated PDFs.")
     parser.add_argument("--basename", default="vocab", help="Base filename for output PDFs.")
+    parser.add_argument(
+        "--layout",
+        choices=["repeated-4up", "unit-3q1a"],
+        default="repeated-4up",
+        help="Use repeated question cards or one 3-question-plus-answer page per unit.",
+    )
     parser.add_argument("--worksheet-title", default="汉译英默写卡")
     parser.add_argument("--answer-title", default="汉译英默写卡答案")
     parser.add_argument("--subtitle", default="词汇短语")
@@ -234,9 +324,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    items = load_items(args.input)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     font_name = register_font()
+
+    if args.layout == "unit-3q1a":
+        units = load_units(args.input)
+        unit_cards = args.out_dir / f"{args.basename}_unit_cards_3q1a.pdf"
+        make_unit_cards(unit_cards, units, font_name, args.worksheet_title)
+        if args.print in {"worksheet", "both"}:
+            submit_print([unit_cards], args.printer)
+        elif args.print == "answer":
+            raise ValueError("Unit 3q1a layout has no separate answer-key file; use --print worksheet.")
+        print(f"unit_cards={unit_cards}")
+        return
+
+    items = load_items(args.input)
 
     worksheet = args.out_dir / f"{args.basename}_cards_4up.pdf"
     answer = args.out_dir / f"{args.basename}_answer_key.pdf"
